@@ -2,24 +2,25 @@
 
 class Animal
 {
-	private $name;
+	public $name;
+	public $gender = 'male';
 
 	/*
 	 * Monthly food and water consumption
 	 */
-	private $monthlyFoodConsumption;
-	private $monthlyWaterConsumption;
+	public $monthlyFood;
+	public $monthlyWater;
 
 	/*
 	 * Animal life span
 	 */
-	private $lifeSpan;
+	public $lifeSpan;
 
 	/*
 	 * Minimum and maximum temperature for the animal
 	 */
-	private $minTemperature;
-	private $maxTemperature;
+	public $minTemperature;
+	public $maxTemperature;
 
 	/*
 	 * The current animal age
@@ -27,26 +28,140 @@ class Animal
 	private $age;
 
 	/*
+	 * Breeding age
+	 */
+	private $breedingAge = 2;
+
+	/*
+	 * Values to determine how many month of pregnancy and the partner
+	 */
+	private $pregnancy;
+	private $partner;
+
+	/*
+	 * Starving, thirsty or feeling extreme temperature
+	 */
+	private $starvation;
+	private $thirst;
+	private $extremeTemperature;
+
+	private $thresholdStarvation = 3;
+	private $thresholdThirst = 1;
+	private $thresholdTemperature = 1;
+
+	/*
 	 * Habitat class to hold information about the habitat that the animal is on
 	 */
 	private $habitat;
 
-	public function __construct($habitat)
+	public function __construct($name, $monthlyFood, $monthlyWater, $temperature, $lifeSpan, $habitat)
 	{
+		$this->name = $name;
+		$this->monthlyFood = $monthlyFood;
+		$this->monthlyWater = $monthlyWater;
+		$this->minTemperature = $temperature[0];
+		$this->maxTemperature = $temperature[1];
+		$this->lifeSpan = $lifeSpan;
 		$this->habitat = $habitat;
+
+		// Default values
+		$this->age = 0;
+		$this->starvation = 0;
+		$this->thirsty = 0;
+		$this->extremeTemperature = 0;
 	}
 
 	public function simulate($currentMonth, $currentSeason)
 	{
-		// Simulation will make one month changes
+		// Simulate one month
+		// Update age (in years)
+		$this->age = floor($currentMonth / 12);
 
-		// Update age
-		$this->age = $currentMonth / 12;
+		// Consume food/water
+		$this->consumeFoodWater();
+
+		$habitatTemp = $this->habitat->temperature[$currentSeason];
+		if ( !($habitatTemp >= $this->minTemperature && $habitatTemp <= $this->maxTemperature) )
+		{
+			$this->extremeTemperature++;
+		}
 
 		// Determine if the animal will die this month
 		$this->determineDeath($currentSeason);
 
-		echo 'animal simulation in progress';
+		// Animal breeding
+		$this->breeding();
+
+		//echo 'Animal simulation in progress<br>';
+	}
+
+	public function consumeFoodWater()
+	{
+		if ( $this->habitat->currentFood > 0 )
+		{
+			$this->habitat->currentFood -= $this->monthlyFood;
+		} else {
+			// Starving
+			$this->starvation++;
+		}
+
+		if ( $this->habitat->currentWater > 0 )
+		{
+			$this->habitat->currentWater -= $this->monthlyWater;
+		} else {
+			// Thirsty
+			$this->thirsty++;
+		}
+	}
+
+	public function breeding()
+	{
+		/*
+		if ($this->pregnancy == -1)
+		{
+			// Already gave birth
+			return false;
+		}
+*/
+		if ( $this->gender == 'female' )
+		{
+			// If not pregnant
+			if ( $this->pregnancy == 0 && $this->age == $this->breedingAge )
+			{
+				// Pick a male from the habitat
+				$males = [];
+				//var_dump($this->habitat->animals); exit;
+				foreach ($this->habitat->animals as $animal)
+				{
+					if ( $animal->gender == 'male' )
+					{
+						$males[] = $animal;
+					}
+				}
+				//var_dump(count($males));
+				if ( count($males) > 0 )
+				{
+					// Random male partner
+					$this->partner = $males[rand(0, count($males) - 1)];
+					// Pregnancy started
+					$this->pregnancy++;
+				}
+			}
+
+			// If pregnant
+			if ( $this->pregnancy > 0 )
+			{
+				$this->pregnancy++;
+				if ( $this->pregnancy == 3 )
+				{
+					// Give birth
+					$animal = new Animal($this->name, $this->monthlyFood, $this->monthlyWater, [$this->minTemperature, $this->maxTemperature], $this->lifeSpan, $this->habitat);
+					$animal->gender = rand(0, 1) == 0 ? 'male': 'female';
+					$this->habitat->animals[] = $animal;
+					echo 'New birth<br>';
+				}
+			}
+		}
 	}
 
 	public function determineDeath($currentSeason)
@@ -58,30 +173,32 @@ class Animal
 		}
 
 		// Due to temperature
-		// Get current temperature
-		$temperature = $this->habitat->temperature[$currentSeason];
-		if ( !($temperature[0] >= $this->minTemperature && $temperature[1] <= $this->maxTemperature) )
-		{
-			$this->death('Temperature');
-		}
+	 	if ( $this->extremeTemperature >= $this->thresholdTemperature )
+	 	{
+	 		$this->death('Temperature');
+	 	}
 
 		// Due to starvation
-		if ( $this->habitat->currentFood <= 0 )
+		if ( $this->starvation >= $this->thresholdStarvation )
 		{
 			$this->death('Starvation');
 		}
 
 		// Due to dehydration
-		if ( $this->habitat->currentWater <= 0 )
+		if ( $this->thirst >= $this->thresholdThirst )
 		{
 			$this->death('Dehydration');
 		}
-
 	}
 
 	public function death( $cause )
 	{
-		//$habitat 
+		$key = array_search($this, $this->habitat->animals);
+		if ( $key !== false )
+		{
+			unset($this->habitat->animals[$key]);
+		}
+		echo "Animal died from $cause<br>";
 	}
 }
 
