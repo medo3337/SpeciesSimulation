@@ -15,7 +15,7 @@ class SpeciesSimulation
 	/*
 	 * Number of months to run the simulation
 	 */
-	private $statistics;
+	private $stats;
 
 	public function __construct( $configFile = null )
 	{
@@ -42,17 +42,15 @@ class SpeciesSimulation
 				$this->habitats[] = $habitat;
 	
 				// Male
-				$animal = new Animal($animalInfo['name'], $animalInfo['attributes']['monthly_food_consumption'], $animalInfo['attributes']['monthly_water_consumption'],
+				$animal = new Animal($animalInfo['name'], 'male', $animalInfo['attributes']['monthly_food_consumption'], $animalInfo['attributes']['monthly_water_consumption'],
 								 	 [$animalInfo['attributes']['minimum_temperature'], $animalInfo['attributes']['maximum_temperature']], $animalInfo['attributes']['life_span'],
 								 	  $habitat);
-				$animal->gender = 'male';
 				$habitat->animals[] = $animal;
 
 				// Female
-				$animal = new Animal($animalInfo['name'], $animalInfo['attributes']['monthly_food_consumption'], $animalInfo['attributes']['monthly_water_consumption'],
+				$animal = new Animal($animalInfo['name'], 'female', $animalInfo['attributes']['monthly_food_consumption'], $animalInfo['attributes']['monthly_water_consumption'],
 								 	 [$animalInfo['attributes']['minimum_temperature'], $animalInfo['attributes']['maximum_temperature']], $animalInfo['attributes']['life_span'],
 								 	  $habitat);
-				$animal->gender = 'female';
 				$habitat->animals[] = $animal;
 			}
 		}
@@ -74,27 +72,45 @@ class SpeciesSimulation
 			}
 		}
 
-		echo '<pre>';
-		print_r($this->statistics);
-		echo '</pre>';
+		// Get the average population
+		foreach ( $this->stats as $key => $animalStats )
+		{
+			foreach ( $this->stats[$key] as $animalName => $value )
+			{
+				$this->stats[$key][$animalName]['avg_population'] = number_format($this->stats[$key][$animalName]['total_population'] / $this->months, 2);
+				// This is not needed for stats
+				//unset($this->stats[$key][$animalName]['total_population']);
+			}
+		}
 	}
 
 	public function collectStatistics($habitat)
 	{
 		foreach ( $habitat->animals as $animal )
 		{
-			if ( !isset($this->statistics[$habitat->name][$animal->name]['max_population']) )
+			if ( !isset($this->stats[$animal->name][$habitat->name]['max_population']) )
 			{
-				$this->statistics[$habitat->name][$animal->name]['max_population'] = 0;
+				$this->stats[$animal->name][$habitat->name]['max_population'] = 0;
 			}
-			$this->statistics[$habitat->name][$animal->name]['max_population'] = max(count($habitat->animals), $this->statistics[$habitat->name][$animal->name]['max_population']);
+
+			if ( !isset($this->stats[$animal->name][$habitat->name]['total_population']) )
+			{
+				$this->stats[$animal->name][$habitat->name]['total_population'] = 0;
+			}
+			
+			// Max population
+			$this->stats[$animal->name][$habitat->name]['max_population'] = max(count($habitat->animals), $this->stats[$animal->name][$habitat->name]['max_population']);
+
+			// Average population
+			$this->stats[$animal->name][$habitat->name]['total_population'] += count($habitat->animals);
 		}
 	}
 
 	public function output()
 	{
-		echo 'Simulation ran for ' . floor($this->months / 12) . ' years';
-
+		header('Content-Type: text');
+		echo 'Simulation ran for ' . floor($this->months / 12) . " years\n";
+		echo yaml_emit($this->stats);
 	}
 }
 
