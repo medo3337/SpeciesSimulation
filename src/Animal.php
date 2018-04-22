@@ -1,36 +1,17 @@
 <?php
-
+/*
+ * Animal class, each instance represent one single animal
+ * @author: Mohamed Abowarda <Medo3337@hotmail.com>
+ *
+ */
 class Animal
 {
-	public $name;
-	public $gender = 'male';
-
-	/*
-	 * Monthly food and water consumption
-	 */
-	public $monthlyFood;
-	public $monthlyWater;
-
-	/*
-	 * Animal life span
-	 */
-	public $lifeSpan;
-
-	/*
-	 * Minimum and maximum temperature for the animal
-	 */
-	public $minTemperature;
-	public $maxTemperature;
+	public $gender;
 
 	/*
 	 * The current animal age
 	 */
 	private $age;
-
-	/*
-	 * Breeding age
-	 */
-	private $procreation_age = 2;
 
 	/*
 	 * Values to determine how many month of pregnancy and the partner
@@ -54,34 +35,42 @@ class Animal
 	 */
 	private $habitat;
 
-	public function __construct($name, $gender, $monthlyFood, $monthlyWater, $temperature, $lifeSpan, $habitat)
+	public function __construct($name, $attributes, $gender, $habitat)
 	{
+		foreach ( $attributes as $key => $value )
+		{
+			$this->{$key} = $value;
+		}
+
 		$this->name = $name;
-		$this->monthlyFood = $monthlyFood;
-		$this->monthlyWater = $monthlyWater;
-		$this->minTemperature = $temperature[0];
-		$this->maxTemperature = $temperature[1];
-		$this->lifeSpan = $lifeSpan;
+		$this->gender = $gender;
 		$this->habitat = $habitat;
 
 		// Default values
 		$this->age = 0;
 		$this->starvation = 0;
-		$this->thirsty = 0;
+		$this->thirst = 0;
 		$this->extremeTemperature = 0;
+		$this->pregnancy = 0;
+		$this->partner = null;
 	}
 
+    /**
+     * Simulate one month
+     * @param  integer  $currentMonth
+     * @param  integer  $currentSeason
+     *
+     * @return void
+     */
 	public function simulate($currentMonth, $currentSeason)
 	{
-		// Simulate one month
 		// Update age (in years)
 		$this->age = floor($currentMonth / 12);
 
 		// Consume food/water
 		$this->consumeFoodWater();
 
-		$habitatTemp = $this->habitat->temperature[$currentSeason];
-		if ( !($habitatTemp >= $this->minTemperature && $habitatTemp <= $this->maxTemperature) )
+		if ( !($this->habitat->currentTemperature >= $this->minimum_temperature && $this->habitat->currentTemperature <= $this->maximum_temperature) )
 		{
 			$this->extremeTemperature++;
 		}
@@ -93,11 +82,16 @@ class Animal
 		$this->breeding();
 	}
 
+    /**
+     * Consuming food and water from the habitat
+     *
+     * @return void
+     */
 	public function consumeFoodWater()
 	{
 		if ( $this->habitat->currentFood > 0 )
 		{
-			$this->habitat->currentFood -= $this->monthlyFood;
+			$this->habitat->currentFood -= $this->monthly_food_consumption;
 		} else {
 			// Starving
 			$this->starvation++;
@@ -105,13 +99,18 @@ class Animal
 
 		if ( $this->habitat->currentWater > 0 )
 		{
-			$this->habitat->currentWater -= $this->monthlyWater;
+			$this->habitat->currentWater -= $this->monthly_water_consumption;
 		} else {
 			// Thirsty
-			$this->thirsty++;
+			$this->thirst++;
 		}
 	}
 
+    /**
+     * The breeding process will run for females, it will handle pregnancy and giving birth
+     *
+     * @return void
+     */
 	public function breeding()
 	{
 		if ( $this->gender != 'female' )
@@ -120,9 +119,9 @@ class Animal
 		}
 
 		// If not pregnant
-		if ( $this->pregnancy == 0 && $this->age == $this->breedingAge )
+		if ( $this->pregnancy == 0 && $this->age > 0 && $this->age % $this->procreation_age == 0 )
 		{
-			// Pick a male from the habitat
+			// Pick a male partner from the habitat
 			$males = [];
 			//var_dump($this->habitat->animals); exit;
 			foreach ($this->habitat->animals as $animal)
@@ -146,13 +145,17 @@ class Animal
 		if ( $this->pregnancy > 0 )
 		{
 			$this->pregnancy++;
-			if ( $this->pregnancy == 3 )
+			if ( $this->pregnancy >= $this->gestation_period )
 			{
 				// Give birth
-				$animal = new Animal($this->name, $this->monthlyFood, $this->monthlyWater, [$this->minTemperature, $this->maxTemperature], $this->lifeSpan, $this->habitat);
-				$animal->gender = rand(0, 1) == 0 ? 'male': 'female';
+				// Pick random gender 50:50
+				$gender = rand(0, 1) == 0 ? 'male': 'female';
+				$animal = new Animal($this->name, $this, $gender, $this->habitat);
+				$animal->isChild = true;
 				$this->habitat->animals[] = $animal;
-				echo 'New birth<br>';
+				$this->habitat->totalBorn++;
+				$this->pregnancy = 0;
+				$this->gaveBirth = true;
 			}
 		}
 		return true;
@@ -161,7 +164,7 @@ class Animal
 	public function simulateDeath($currentSeason)
 	{
 		// Due to aging
-		if ( $this->age >= $this->lifeSpan )
+		if ( $this->age >= $this->life_span )
 		{
 			$this->death('Age');
 		}
@@ -185,13 +188,14 @@ class Animal
 		}
 	}
 
-	public function death( $cause )
+	public function death($cause)
 	{
 		$key = array_search($this, $this->habitat->animals);
 		if ( $key !== false )
 		{
 			unset($this->habitat->animals[$key]);
 		}
+		$this->habitat->totalDeath++;
 		//echo "Animal died from $cause<br>";
 	}
 }

@@ -1,30 +1,13 @@
 <?php
 /*
  * Habitat class
- * @author: Mohamed Abowarda
+ * @author: Mohamed Abowarda <Medo3337@hotmail.com>
  *
  */
 
 class Habitat
 {
 	public $name;
-
-	/*
-	 * Monthly available food and water
-	 */
-	public $monthlyFood;
-	public $monthlyWater;
-
-	/*
-	 * Current available food
-	 */
-	public $currentFood;
-	public $currentWater;
-
-	/*
-	 * Temperature for all seasons
-	 */
-	public $temperature;
 
 	/*
 	 * Store current temperature
@@ -36,12 +19,26 @@ class Habitat
 	 */
 	public $animals;
 
-	public function __construct( $name, $monthlyFood, $monthlyWater, $temperature )
+	/*
+	 * Current food and water
+	 */
+	public $currentFood;
+	public $currentWater;
+
+	/*
+	 * Total number of born/death
+	 */
+	public $totalBorn  = 0;
+	public $totalDeath = 0;
+
+	public function __construct($habitatInfo)
 	{
-		$this->name = $name;
-		$this->monthlyFood = $monthlyFood;
-		$this->monthlyWater = $monthlyWater;
-		$this->temperature = $temperature;
+		foreach ( $habitatInfo as $key => $value )
+		{
+			$this->{$key} = $value;
+		}
+		// Convert associative array to indexed array
+		$this->average_temperature = array_values($this->average_temperature);
 	}
 
 	public function simulate($currentMonth)
@@ -62,17 +59,17 @@ class Habitat
 		$currentSeasonId = $monthSeason[($currentMonth % 12) + 1];
 
 		// Monthly food supply
-		$this->currentFood  = $this->monthlyFood;
-		$this->currentWater = $this->monthlyWater;
+		$this->currentFood  = $this->monthly_food;
+		$this->currentWater = $this->monthly_water;
 
 		// Change temperature for this month based on the current season
 		// 0.5% chance of having up to a 15 degree fluctuation
 		if ( rand(1, 200) <= 5 )
 		{
-			$this->currentTemperature = $this->temperature[$currentSeasonId] + rand(-15, 15);
+			$this->currentTemperature = $this->average_temperature[$currentSeasonId] + rand(-15, 15);
 		} else {
 			// The temperature for the month should fluctuate randomly above/below the average by up to 5 degrees
-			$this->currentTemperature = $this->temperature[$currentSeasonId] + rand(-5, 5);
+			$this->currentTemperature = $this->average_temperature[$currentSeasonId] + rand(-5, 5);
 		}
 
 		// For each animal
