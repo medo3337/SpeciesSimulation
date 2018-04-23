@@ -9,7 +9,7 @@ class Animal
 	public $gender;
 
 	/*
-	 * The current animal age
+	 * The current animal age (in months)
 	 */
 	private $age;
 
@@ -26,8 +26,8 @@ class Animal
 	private $thirst;
 	private $extremeTemperature;
 
-	private $thresholdStarvation = 3;
-	private $thresholdThirst = 1;
+	private $thresholdStarvation  = 3;
+	private $thresholdThirst 	  = 1;
 	private $thresholdTemperature = 1;
 
 	/*
@@ -46,6 +46,9 @@ class Animal
 		$this->gender = $gender;
 		$this->habitat = $habitat;
 
+		// Life span (Convert years to months)
+		$this->life_span *= 12;
+
 		// Default values
 		$this->age = 0;
 		$this->starvation = 0;
@@ -53,6 +56,8 @@ class Animal
 		$this->extremeTemperature = 0;
 		$this->pregnancy = 0;
 		$this->partner = null;
+
+		$habitat->totalBorn++;
 	}
 
     /**
@@ -64,8 +69,8 @@ class Animal
      */
 	public function simulate($currentMonth, $currentSeason)
 	{
-		// Update age (in years)
-		$this->age = floor($currentMonth / 12);
+		// Update age (in months)
+		$this->age++;
 
 		// Consume food/water
 		$this->consumeFoodWater();
@@ -73,6 +78,9 @@ class Animal
 		if ( !($this->habitat->currentTemperature >= $this->minimum_temperature && $this->habitat->currentTemperature <= $this->maximum_temperature) )
 		{
 			$this->extremeTemperature++;
+		} else {
+			// No longer in extreme temperature
+			$this->extremeTemperature = 0;
 		}
 
 		// Determine if the animal will die this month
@@ -89,20 +97,26 @@ class Animal
      */
 	public function consumeFoodWater()
 	{
-		if ( $this->habitat->currentFood > 0 )
+		if ( $this->habitat->currentFood >= $this->monthly_food_consumption )
 		{
 			$this->habitat->currentFood -= $this->monthly_food_consumption;
+			// No longer starving
+			$this->thirst = 0;
 		} else {
 			// Starving
 			$this->starvation++;
+			$this->habitat->currentFood = 0;
 		}
 
-		if ( $this->habitat->currentWater > 0 )
+		if ( $this->habitat->currentWater >= $this->monthly_water_consumption )
 		{
 			$this->habitat->currentWater -= $this->monthly_water_consumption;
+			// No longer thirsty
+			$this->thirst = 0;
 		} else {
 			// Thirsty
 			$this->thirst++;
+			$this->habitat->currentWater = 0;
 		}
 	}
 
@@ -119,11 +133,10 @@ class Animal
 		}
 
 		// If not pregnant
-		if ( $this->pregnancy == 0 && $this->age > 0 && $this->age % $this->procreation_age == 0 )
+		if ( $this->pregnancy == 0 && $this->age > 0 && ($this->age * 12) % $this->procreation_age == 0 )
 		{
 			// Pick a male partner from the habitat
 			$males = [];
-			//var_dump($this->habitat->animals); exit;
 			foreach ($this->habitat->animals as $animal)
 			{
 				if ( $animal->gender == 'male' )
@@ -153,14 +166,17 @@ class Animal
 				$animal = new Animal($this->name, $this, $gender, $this->habitat);
 				$animal->isChild = true;
 				$this->habitat->animals[] = $animal;
-				$this->habitat->totalBorn++;
 				$this->pregnancy = 0;
-				$this->gaveBirth = true;
 			}
 		}
 		return true;
 	}
 
+    /**
+     * Simulate animal death for various of reasons (aging, starvation, extreme temperature, etc...)
+     *
+     * @return void
+     */
 	public function simulateDeath($currentSeason)
 	{
 		// Due to aging
@@ -188,15 +204,19 @@ class Animal
 		}
 	}
 
+    /**
+     * Animal death occurs
+     *
+     * @return void
+     */
 	public function death($cause)
-	{
-		$key = array_search($this, $this->habitat->animals);
+	{		
+		$key = array_search($this, $this->habitat->animals, true);
 		if ( $key !== false )
 		{
 			unset($this->habitat->animals[$key]);
+			$this->habitat->totalDeath++;
 		}
-		$this->habitat->totalDeath++;
-		//echo "Animal died from $cause<br>";
 	}
 }
 

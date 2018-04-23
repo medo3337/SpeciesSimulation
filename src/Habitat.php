@@ -31,6 +31,13 @@ class Habitat
 	public $totalBorn  = 0;
 	public $totalDeath = 0;
 
+	/*
+	 * Total and maximum population
+	 */
+	public $totalPopulation = 0;
+	public $maxPopulation 	= 0;
+	public $animalName 		= null;
+
 	public function __construct($habitatInfo)
 	{
 		foreach ( $habitatInfo as $key => $value )
@@ -47,6 +54,11 @@ class Habitat
 		{
 			// No animals exists on this habitat
 			return false;
+		}
+
+		if ( isset($this->animals[0]->name) )
+		{
+			$this->animalName = $this->animals[0]->name;
 		}
 
 		// To convert month to season id
@@ -77,6 +89,11 @@ class Habitat
 		{
 			$animal->simulate($currentMonth, $currentSeasonId);
 		}
+
+		// Update total and max population
+		$this->totalPopulation += count($this->animals);
+		$this->maxPopulation = max($this->maxPopulation, count($this->animals));
+
 		return true;
 	}
 }

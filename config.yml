@@ -5,7 +5,7 @@ species:
       monthly_food_consumption: 3 #arbitrary unit
       monthly_water_consumption: 4 #arbitrary unit
       life_span: 30 #years 
-      minimum_temperature: 30 #F
+      minimum_temperature: 20 #F
       maximum_temperature: 110 #F
       gestation_period: 9 #month
       procreation_age: 5 #years
